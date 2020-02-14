@@ -11,7 +11,7 @@ for p in partitions:
     if X <= psutil.disk_usage(p.mountpoint).total / 1024 / 1024:
         for i in range(0, Z):
             with open(f"{p.mountpoint}/file{i}", "wb") as f:
-                f.seek(int((300 / 1024) * 1024 * 1024 * 1024))
+                f.seek(int((Y / 1024) * 1024 * 1024 * 1024))
                 f.write(b'0')
                 bashCommand = f"dd if={Data} of={p.mountpoint}/file{i}"
                 import subprocess
