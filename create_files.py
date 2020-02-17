@@ -21,7 +21,7 @@ for p in partitions:
             FNULL = open(os.devnull, 'w')
             process = subprocess.Popen(bashCommand.split(), stdout=FNULL, stderr=FNULL)
             output, error = process.communicate()
-            break
+        break
 else:
     print("There no suitable partition.")
 print("Seconds spent: {}".format(time.time() - t1))
