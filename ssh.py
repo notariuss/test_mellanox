@@ -1,6 +1,7 @@
+ #!/usr/bin/env python3
 import sys
 from threading import Thread
-
+import argparse
 import paramiko
 
 class SSHThread(Thread):
@@ -16,23 +17,49 @@ class SSHThread(Thread):
     def run(self):
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        client.connect(hostname=self.host, username=self.username, password=self.secret, port=self.port)
-        stdin, stdout, stderr = client.exec_command(self.command)
-        data = stdout.read() + stderr.read()
-        client.close()
-        print(f"{self.username}@{self.host} cmd result:")
-        print(data.decode())
- 
- 
-def main(tasks):
-    for host, port, username, secret, command in tasks:
+        try:
+            client.connect(hostname=self.host, username=self.username, password=self.secret, port=self.port)
+        except paramiko.ssh_exception.AuthenticationException:
+            print(f"{self.username}@{self.host} incorect password!")
+            exit()
+        except Exception:
+            print(f"{self.username}@{self.host} failed to connect!")
+        chan = client.get_transport().open_session()
+        chan.exec_command(self.command)
+        content = open(".ssh_tmp", "wb")
+        errors = open(".ssh_tmp_errors", "wb")
+        while not chan.exit_status_ready():
+            if chan.recv_ready():
+                data = chan.recv(1024)
+                while data:
+                    content.write(data)
+                    data = chan.recv(1024)
+
+            if chan.recv_stderr_ready():            
+                error_buff = chan.recv_stderr(1024)
+                while error_buff:
+                    errors.write(error_buff)
+                    error_buff = chan.recv_stderr(1024)
+        exit_status = chan.recv_exit_status()
+        content.close()
+        errors.close()
+        content = open(".ssh_tmp", "rb")
+        errors = open(".ssh_tmp_errors", "rb")
+        print(f"{self.username}@{self.host} cmd exit status {exit_status}; cmd result:")
+        print(content.read().decode() + errors.read().decode())
+        content.close()
+        errors.close()
+
+
+def main(hosts, command):
+    command = " ".join(command)
+    for host, port, username, secret in hosts:
         thread = SSHThread(host, port, username, secret, command)
         thread.start()
 
 if __name__ == "__main__":
-    tasks = []
-    for task in sys.argv[1:]:
-        tasks.append(task.split(":"))
-    main(tasks)
-
-#main([["52.148.198.128", 22, "andrii", "JustD01tJustD01t", "sleep 5 && ls /"], ["51.137.215.9", 22, "andrii", "JustD01tJustD01t", "ls /"]])
+    parser = argparse.ArgumentParser()
+    parser.add_argument("cmd", nargs="*")
+    parser.add_argument('-host', action="append", nargs=4)
+    args = parser.parse_args()
+    main(args.host, args.cmd)
