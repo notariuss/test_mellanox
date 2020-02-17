@@ -12,14 +12,16 @@ Z = 2 # count
 Y = 300 # file size
 Data = "/dev/zero"
 
+t1 = time.time()
 for p in partitions:
-    if X <= psutil.disk_usage(p.mountpoint).free / 1024 / 1024:
+    if X * 1024 * 1024 <= psutil.disk_usage(p.mountpoint).free:
         for i in range(1, Z + 1):
             file = os.path.join(p.mountpoint, f"file{i}")
-            with open(file, "wb") as f:
-                bashCommand = f"dd if={Data} of={file} count={Y * 1024} bs=1024"
-                t1 = time.time()
-                FNULL = open(os.devnull, 'w')
-                process = subprocess.Popen(bashCommand.split(), stdout=FNULL, stderr=FNULL)
-                output, error = process.communicate()
-                print("{} seconds spent: {}".format(file, time.time() - t1))
+            bashCommand = f"dd if={Data} of={file} count={Y * 1024} bs=1024"
+            FNULL = open(os.devnull, 'w')
+            process = subprocess.Popen(bashCommand.split(), stdout=FNULL, stderr=FNULL)
+            output, error = process.communicate()
+            break
+else:
+    print("There no suitable partition.")
+print("Seconds spent: {}".format(time.time() - t1))
